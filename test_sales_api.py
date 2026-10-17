@@ -1,0 +1,43 @@
+import unittest
+
+from sales_api import create_sale_response
+
+
+class SalesApiTests(unittest.TestCase):
+    def test_create_sale_response_splits_amount(self):
+        response = create_sale_response({
+            "amount": 20,
+            "supplier": 2,
+            "salaries": 3,
+            "maintenance": 5,
+        })
+
+        self.assertEqual(response["amount"], 20)
+        self.assertEqual(response["split"]["supplier"], 0.4)
+        self.assertEqual(response["split"]["salaries"], 0.6)
+        self.assertEqual(response["split"]["maintenance"], 1.0)
+        self.assertEqual(response["split"]["profit"], 18.0)
+
+    def test_create_sale_response_uses_environment_defaults(self):
+        import os
+        from unittest.mock import patch
+
+        with patch.dict(
+            os.environ,
+            {
+                "KWIKPAY_SUPPLIER_PERCENT": "10",
+                "KWIKPAY_SALARIES_PERCENT": "15",
+                "KWIKPAY_MAINTENANCE_PERCENT": "20",
+            },
+            clear=False,
+        ):
+            response = create_sale_response({"amount": 100})
+
+        self.assertEqual(response["split"]["supplier"], 10.0)
+        self.assertEqual(response["split"]["salaries"], 15.0)
+        self.assertEqual(response["split"]["maintenance"], 20.0)
+        self.assertEqual(response["split"]["profit"], 55.0)
+
+
+if __name__ == "__main__":
+    unittest.main()

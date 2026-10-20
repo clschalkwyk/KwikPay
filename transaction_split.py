@@ -1,5 +1,7 @@
 import os
 
+from rules_engine import Rule, RulesEngine
+
 
 class TransactionSplitter:
     # Default split percentages used when the app does not receive override values.
@@ -49,6 +51,10 @@ class TransactionSplitter:
 
         self.distribution = values
         self._validate()
+        self.rules = RulesEngine([
+            Rule(name, percentage)
+            for name, percentage in self.distribution.items()
+        ])
 
     def _validate(self):
         # Reject invalid negative sales values.
@@ -61,14 +67,7 @@ class TransactionSplitter:
             raise ValueError("The total split percentage cannot exceed 100%.")
 
     def calculate(self):
-        # Convert each percentage into a money value for the sale.
-        allocations = {}
-        for name, percentage in self.distribution.items():
-            allocations[name] = self.total_amount * (percentage / 100)
-
-        # Whatever is left after fixed allocations is the business profit.
-        allocations["profit"] = self.total_amount - sum(allocations.values())
-        return allocations
+        return self.rules.evaluate(self.total_amount)
 
 
 def split_transaction(total_amount, supplier=None, salaries=None, maintenance=None, env=None):

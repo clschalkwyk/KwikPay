@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 
 from sales_api import create_sale_response
 
@@ -37,6 +38,28 @@ class SalesApiTests(unittest.TestCase):
         self.assertEqual(response["split"]["salaries"], 15.0)
         self.assertEqual(response["split"]["maintenance"], 20.0)
         self.assertEqual(response["split"]["profit"], 55.0)
+
+    def test_create_sale_response_submits_to_interledger_when_shop_id_present(self):
+        with mock.patch("sales_api.InterledgerPaymentClient") as mock_client:
+            mock_client.return_value.create_payment.return_value = {
+                "id": "123e4567-e89b-12d3-a456-426614174000",
+                "shopId": "shop-42",
+                "amount": 20,
+                "currency": "ZAR",
+                "status": "PENDING",
+            }
+
+            response = create_sale_response({
+                "amount": 20,
+                "shopId": "shop-42",
+                "supplier": 2,
+                "salaries": 3,
+                "maintenance": 5,
+            })
+
+            self.assertEqual(response["payment"]["shopId"], "shop-42")
+            self.assertEqual(response["payment"]["status"], "PENDING")
+            mock_client.return_value.create_payment.assert_called_once_with("shop-42", 20, "ZAR")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,18 @@
+import math
 from dataclasses import dataclass
+from decimal import Decimal, ROUND_HALF_UP
+
+
+def _coerce_finite_float(value, label):
+    try:
+        coerced = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{label} must be a finite number.") from None
+
+    if not math.isfinite(coerced):
+        raise ValueError(f"{label} must be a finite number.")
+
+    return coerced
 
 
 # A single allocation rule describing how much of a sale should go to a category.
@@ -12,11 +26,16 @@ class Rule:
         if not isinstance(self.name, str) or not self.name.strip():
             raise ValueError("Rule name must be a non-empty string.")
 
-        # Percentages are stored as floats so values like 2, 3.5, or 10 are supported.
-        percent = float(self.percent)
-        if percent < 0:
-            raise ValueError(f"Rule '{self.name}' cannot have a negative percentage.")
+        normalized_name = self.name.strip()
+        if normalized_name.lower() == "profit":
+            raise ValueError("Rule name 'profit' is reserved for the remaining business profit.")
 
+        # Percentages are stored as floats so values like 2, 3.5, or 10 are supported.
+        percent = _coerce_finite_float(self.percent, f"Rule '{normalized_name}' percentage")
+        if percent < 0:
+            raise ValueError(f"Rule '{normalized_name}' cannot have a negative percentage.")
+
+        object.__setattr__(self, "name", normalized_name)
         object.__setattr__(self, "percent", percent)
 
 
@@ -59,16 +78,17 @@ class RulesEngine:
         return normalized
 
     def evaluate(self, total_amount):
-        # Sales must stay non-negative for the business rules to make sense.
-        total_amount = float(total_amount)
+        total_amount = _coerce_finite_float(total_amount, "Total amount")
         if total_amount < 0:
             raise ValueError("Total amount cannot be negative.")
 
+        total = Decimal(str(total_amount))
         allocations = {}
         for rule in self.rules:
-            # Convert each percentage to a money value using the sale total.
-            allocations[rule.name] = total_amount * (rule.percent / 100)
+            exact_amount = total * (Decimal(str(rule.percent)) / Decimal("100"))
+            rounded_amount = float(exact_amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+            allocations[rule.name] = rounded_amount
 
-        # Whatever remains after the configured rules is the business profit.
-        allocations["profit"] = total_amount - sum(allocations.values())
+        remaining = float((total - sum(Decimal(str(value)) for value in allocations.values())).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+        allocations["profit"] = remaining
         return allocations

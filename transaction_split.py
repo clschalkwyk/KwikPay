@@ -1,3 +1,4 @@
+import math
 import os
 
 from rules_engine import Rule, RulesEngine
@@ -27,7 +28,13 @@ class TransactionSplitter:
 
     def __init__(self, total_amount, supplier=None, salaries=None, maintenance=None, env=None):
         # Keep the amount as a number so percentage math is straightforward.
-        self.total_amount = float(total_amount)
+        try:
+            self.total_amount = float(total_amount)
+        except (TypeError, ValueError):
+            raise ValueError("Total amount must be a finite number.") from None
+
+        if not math.isfinite(self.total_amount):
+            raise ValueError("Total amount must be a finite number.")
 
         if env is None:
             env = os.environ
@@ -65,6 +72,14 @@ class TransactionSplitter:
         total_percentage = sum(self.distribution.values())
         if total_percentage > 100:
             raise ValueError("The total split percentage cannot exceed 100%.")
+
+        for name, value in self.distribution.items():
+            try:
+                numeric = float(value)
+            except (TypeError, ValueError):
+                raise ValueError(f"{name} percentage must be a finite number.") from None
+            if not math.isfinite(numeric):
+                raise ValueError(f"{name} percentage must be a finite number.")
 
     def calculate(self):
         return self.rules.evaluate(self.total_amount)

@@ -173,8 +173,8 @@ This local flow is for Test Wallet only. It is not production ready: it has no m
 To run the isolated test flow, compile the SDK bridge and generate its runtime classpath:
 
 ```sh
-cd ../open-payments-java-poc
-JAVA_HOME=$(/usr/libexec/java_home -v 25) ../InterledgerPaymentService/mvnw -Dmaven.repo.local=/private/tmp/kwikpay-poc-m2 compile dependency:build-classpath -Dmdep.outputFile=/private/tmp/kwikpay-sdk-classpath.txt
+cd ../InterledgerPaymentService/open-payments-java-poc
+JAVA_HOME=$(/usr/libexec/java_home -v 25) ../mvnw -Dmaven.repo.local=/private/tmp/kwikpay-poc-m2 compile dependency:build-classpath -Dmdep.outputFile=/private/tmp/kwikpay-sdk-classpath.txt
 ```
 
 In a separate terminal, start the local backend with a dedicated private database. Set the key ID and private-key path locally; never commit their values or print token responses:
@@ -188,7 +188,7 @@ export TEST_WALLET_PRIVATE_KEY_FILE='/absolute/path/to/private.key'
 export KWIKPAY_TEST_WALLET_ENABLED=1
 export KWIKPAY_EXECUTION_DB="$PWD/runtime/test-wallet.sqlite3"
 export KWIKPAY_JAVA="$(/usr/libexec/java_home -v 25)/bin/java"
-export KWIKPAY_BRIDGE_CLASSPATH="$(cd ../open-payments-java-poc && pwd)/target/classes:$(cat /private/tmp/kwikpay-sdk-classpath.txt)"
+export KWIKPAY_BRIDGE_CLASSPATH="$(cd ../InterledgerPaymentService/open-payments-java-poc && pwd)/target/classes:$(cat /private/tmp/kwikpay-sdk-classpath.txt)"
 python3 -B server.py --port 8027
 ```
 
